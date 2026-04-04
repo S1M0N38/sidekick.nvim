@@ -94,6 +94,20 @@ local defaults = {
         vertical = true, -- vertical or horizontal split
         size = 0.5, -- size of the split (0-1 for percentage)
       },
+      --- Maps Neovim key notation to raw escape sequences for CSI-u passthrough.
+      --- When enabled, these terminal-mode keymaps bypass Neovim's input
+      --- processing and write raw bytes directly to the PTY via `nvim_chan_send`.
+      --- This is needed because Neovim's terminal layer cannot faithfully
+      --- forward CSI-u / modifyOtherKeys sequences to a multiplexer running
+      --- inside the terminal buffer.
+      --- Example:
+      --- ```lua
+      --- keys = {
+      ---   ["<S-CR>"] = "\x1b[13;2u",
+      ---   ["<A-CR>"] = "\x1b[13;3u",
+      --- }
+      --- ```
+      keys = {}, ---@type table<string, string>
     },
     --- Actual cli tool config is loaded from the runtime path `sk/cli/{tool}.lua` and merged with the config below.
     --- For default configs, see https://github.com/folke/sidekick.nvim/tree/main/sk/cli

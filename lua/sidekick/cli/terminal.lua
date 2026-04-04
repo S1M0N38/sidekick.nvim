@@ -154,6 +154,7 @@ function M:start()
   vim.b[self.buf].sidekick_cli = self.tool
 
   self:keys()
+  self:mux_keys()
   self:open_win()
 
   -- track if we are in normal mode or terminal mode
@@ -318,6 +319,37 @@ function M:start()
   end
 end
 
+--- Set up keymaps that bypass Neovim's terminal input processing
+--- and send raw escape sequences directly to the PTY.
+--- This is needed when a multiplexer (tmux/zellij) runs inside a
+--- Neovim terminal buffer, because Neovim's terminal layer cannot
+--- faithfully forward CSI-u / modifyOtherKeys sequences.
+---@param buf? integer
+function M:mux_keys(buf)
+  buf = buf or self.buf
+  -- Only set up mux keys when the terminal wraps a multiplexer session
+  if not self.mux_backend or self.mux_backend == "terminal" then
+    return
+  end
+  local mux_keys = Config.cli.mux.keys
+  if not mux_keys or vim.tbl_isempty(mux_keys) then
+    return
+  end
+  for lhs, raw_seq in pairs(mux_keys) do
+    if type(lhs) == "string" and type(raw_seq) == "string" then
+      vim.keymap.set("t", lhs, function()
+        if self:is_running() then
+          vim.api.nvim_chan_send(self.job, raw_seq)
+        end
+      end, {
+        buffer = buf,
+        silent = true,
+        desc = ("Sidekick mux: send %s to %s"):format(lhs, self.mux_backend),
+      })
+    end
+  end
+end
+
 function M:fix_cursorline()
   if not self:win_valid() then
     return
@@ -333,8 +365,7 @@ function M:on_ready()
       vim.schedule(function()
         if self:is_running() then
           -- Use nvim_put to send input to the terminal
-          -- instead of nvim_chan_send to better simulate user input
-          -- vim.api.nvim_chan_send(self.job, next)
+          -- to better simulate user input
           vim.api.nvim_buf_call(self.buf, function()
             vim.api.nvim_put(vim.split(next, "\n", { plain = true }), "c", false, true)
           end)
