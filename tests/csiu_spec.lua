@@ -57,6 +57,38 @@ describe("csiu.defaults", function()
   end)
 end)
 
+describe("tmux.options (CSI-u auto-inject)", function()
+  local tmux = require("sidekick.cli.session.tmux")
+  local orig_csiu
+
+  before_each(function()
+    orig_csiu = Config.cli.win.csiu
+  end)
+
+  after_each(function()
+    Config.cli.win.csiu = orig_csiu
+  end)
+
+  local function seg()
+    return table.concat(tmux.options(), " ")
+  end
+  local function has(s, lit)
+    return string.find(s, lit, 1, true) ~= nil
+  end
+
+  it("injects extended-keys options when win.csiu is on", function()
+    Config.cli.win.csiu = true
+    local s = seg()
+    assert.is_true(has(s, "; set-option extended-keys on"))
+    assert.is_true(has(s, "; set-option extended-keys-format csi-u"))
+  end)
+
+  it("injects nothing when win.csiu is off", function()
+    Config.cli.win.csiu = false
+    assert.are.same({}, tmux.options())
+  end)
+end)
+
 describe("config setup: CSI-u keymap injection", function()
   -- Suppress the deferred side effects of Config.setup (autocmds, nes, status)
   -- so repeated setup() calls don't accumulate them across the suite.
