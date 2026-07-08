@@ -10,7 +10,7 @@ local M = {}
 ---@param opts sidekick.cli.Select
 function M.select(opts)
   assert(type(opts) == "table", "opts must be a table")
-  local tools = require("sidekick.cli.state").get(opts.filter)
+  local tools = require("sidekick.cli.state").get(opts.filter, { spawn = opts.spawn })
 
   ---@param state? sidekick.cli.State
   local on_select = function(state)
@@ -40,7 +40,29 @@ function M.select(opts)
         return p[1]
       end, parts))
     end,
-    snacks = { format = M.format },
+    snacks = {
+      format = M.format,
+      preview = M.preview,
+      -- big horizontal layout: sessions on the left, live scrollback preview
+      -- on the right (see `M.preview`)
+      layout = {
+        hidden = {},
+        layout = {
+          width = 0.9,
+          height = 0.9,
+          box = "horizontal",
+          {
+            box = "vertical",
+            border = true,
+            title = "{title} {live} {flags}",
+            title_pos = "center",
+            { win = "input", height = 1, border = "bottom" },
+            { win = "list", border = "none" },
+          },
+          { win = "preview", title = "{preview}", border = true, width = 0.6 },
+        },
+      },
+    },
   }
 
   vim.ui.select(tools, select_opts, on_select)
@@ -81,10 +103,16 @@ function M.format(state, picker)
   end
   ret[#ret + 1] = { Config.ui.icons[status], status_hl }
   ret[#ret + 1] = { " " }
-  ret[#ret + 1] = { state.tool.name }
-  local len = sw(state.tool.name) + 2
+  -- append the instance ordinal (e.g. "pi #2") so multiple instances of the
+  -- same tool in the same dir can be told apart in the list
+  local name = state.tool.name
+  if state.session and state.session.iid then
+    name = name .. " #" .. state.session.iid
+  end
+  ret[#ret + 1] = { name }
+  local len = sw(name) + 2
   if state.session then
-    ret[#ret + 1] = { string.rep(" ", 12 - len) }
+    ret[#ret + 1] = { string.rep(" ", math.max(0, 12 - len)) }
 
     if state.external then
       ret[#ret + 1] = { Config.ui.icons["external_" .. status], status_hl }
@@ -116,6 +144,30 @@ function M.format(state, picker)
     end
   end
   return ret
+end
+
+--- Live scrollback preview for the session picker.
+--- Captures the selected session's terminal output (incl. ANSI colors) and
+--- renders it in the preview window, mirroring `sidekick.cli.scrollback`.
+---@param ctx snacks.picker.preview.ctx
+function M.preview(ctx)
+  local state = ctx.item.item or ctx.item
+  local session = state.session
+  local text ---@type string?
+  if session and session.dump then
+    text = session:dump()
+  elseif state.terminal and state.terminal.buf and vim.api.nvim_buf_is_valid(state.terminal.buf) then
+    -- embedded Neovim terminal: snapshot the visible lines
+    text = table.concat(vim.api.nvim_buf_get_lines(state.terminal.buf, 0, -1, false), "\n")
+  end
+  if not text or vim.trim(text) == "" then
+    ctx.preview:notify("No scrollback available", "warn", { item = false })
+    return
+  end
+  ctx.preview:set_title((" %s "):format(state.tool.name))
+  -- render the captured output (with escape sequences) in a terminal buffer
+  local buf = ctx.preview:scratch()
+  vim.api.nvim_chan_send(vim.api.nvim_open_term(buf, {}), text)
 end
 
 return M

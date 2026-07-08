@@ -36,7 +36,7 @@ local M = {}
 function M.is(t, filter)
   filter = filter or {}
   return (filter.attached == nil or filter.attached == t.attached)
-    and (filter.cwd == nil or (t.session and t.session.cwd == Session.cwd()))
+    and (filter.cwd == nil or t.session == nil or t.session.cwd == Session.cwd())
     and (filter.external == nil or filter.external == t.external)
     and (filter.installed == nil or filter.installed == t.installed)
     and (filter.name == nil or filter.name == t.tool.name)
@@ -65,9 +65,11 @@ function M.get_state(session)
 end
 
 ---@param filter? sidekick.cli.Filter
+---@param opts? { spawn?: boolean } include a not-running entry per tool even when sessions exist
 ---@return sidekick.cli.State[]
-function M.get(filter)
+function M.get(filter, opts)
   filter = filter or {}
+  opts = opts or {}
   local all = {} ---@type sidekick.cli.State[]
   local sids = {} ---@type table<string, boolean>
   local sessions = filter.attached and Session.attached() or Session.sessions()
@@ -97,7 +99,7 @@ function M.get(filter)
   if not filter.attached then
     for name, tool in pairs(Config.tools()) do
       local sid = Session.sid({ tool = name })
-      if not sids[sid] then
+      if not sids[sid] or opts.spawn then
         all[#all + 1] = {
           tool = tool,
           installed = vim.fn.executable(tool.cmd[1]) == 1,
