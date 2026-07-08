@@ -352,6 +352,31 @@ function M:open_win()
     return
   end
 
+  -- Only one sidekick pane per tab: if another session's terminal is open,
+  -- take over its window instead of stacking a second split.
+  local tab = vim.api.nvim_get_current_tabpage()
+  for _, t in pairs(M.terminals) do
+    if t ~= self and t:is_open() and vim.api.nvim_win_get_tabpage(t.win) == tab then
+      self.win = t.win
+      -- repoint the window at our buffer *before* closing the old terminal:
+      -- :close() deletes its buf, which would otherwise close this window too
+      vim.api.nvim_win_set_buf(self.win, self.buf)
+      t.win = nil -- keep the window; :hide()/:close() must not close it
+      t:close()
+      break
+    end
+  end
+
+  if self:is_open() then
+    local vertical = self.opts.layout == "top" or self.opts.layout == "bottom"
+    vim.wo[self.win].winfixheight = vertical
+    vim.wo[self.win].winfixwidth = not vertical
+    vim.w[self.win].sidekick_cli = self.tool
+    vim.w[self.win].sidekick_session_id = self.id
+    self:wo()
+    return
+  end
+
   local is_float = self.opts.layout == "float"
 
   ---@type vim.api.keyset.win_config
