@@ -156,6 +156,18 @@ function M.with(cb, opts)
   local filter_attached = Util.merge(opts.filter, { attached = true })
   local attached = M.get(filter_attached)
 
+  -- When a session is already visible in the sidekick panel, operate on it
+  -- directly instead of prompting to choose. Only one session is ever open in
+  -- the panel at a time, so the first visible one is the intended target.
+  if not opts.all then
+    for _, s in ipairs(attached) do
+      if s.terminal and s.terminal:is_open() then
+        use(s)
+        return
+      end
+    end
+  end
+
   if #attached == 0 and opts.attach then
     require("sidekick.cli.ui.select").select({
       auto = true,
