@@ -12,17 +12,17 @@ local PANE_FORMAT =
 
 ---@return sidekick.cli.terminal.Cmd?
 function M:attach()
-  if self.sid == self.mux_session then
-    return { cmd = { "tmux", "attach-session", "-t", self.sid } }
+  if M.instance_number(self.mux_session, self.sid) then
+    return { cmd = { "tmux", "attach-session", "-t", self.mux_session } }
   end
 end
 
 function M:init()
   if self.started then
-    self.external = self.sid ~= self.mux_session
+    self.iid = M.instance_number(self.mux_session, self.sid)
+    self.external = not self.iid
   else
     self.external = vim.env.TMUX and Config.cli.mux.create ~= "terminal"
-    self.mux_session = self.sid
   end
   self.priority = self.external and 10 or 50
 end
@@ -30,7 +30,8 @@ end
 ---@return sidekick.cli.terminal.Cmd?
 function M:start()
   if not self.external then
-    local cmd = { "tmux", "new", "-A", "-s", self.id }
+    self.mux_session = M.next_session(self.sid)
+    local cmd = { "tmux", "new", "-A", "-s", self.mux_session }
     vim.list_extend(cmd, { "-c", self.cwd })
     self:add_cmd(cmd)
     vim.list_extend(cmd, { ";", "set-option", "status", "off" })
@@ -94,6 +95,33 @@ function M.options()
     vim.list_extend(ret, { ";", "set-option", "extended-keys-format", "csi-u" })
   end
   return ret
+end
+
+--- Get the instance number of a tmux session name for the given session
+--- group, or `nil` if it is not a sidekick-owned instance of that group.
+--- An owned instance is named `"<sid> #<n>"`.
+---@param mux_session? string
+---@param sid string
+---@return integer?
+function M.instance_number(mux_session, sid)
+  local n = mux_session and mux_session:match("^" .. vim.pesc(sid) .. " #(%d+)$")
+  return n and tonumber(n)
+end
+
+--- Return the next instance session name for the given session group:
+--- `"<sid> #<n>"` where `n` is one higher than the highest running instance.
+---@param sid string
+---@return string
+function M.next_session(sid)
+  local lines = Util.exec({ "tmux", "list-sessions", "-F", "#{session_name}" }, { notify = false })
+  local max = 0
+  for _, name in ipairs(lines or {}) do
+    local n = M.instance_number(name, sid)
+    if n and n > max then
+      max = n
+    end
+  end
+  return ("%s #%d"):format(sid, max + 1)
 end
 
 ---@param opts? { cmd?:string[], notify?:boolean }
