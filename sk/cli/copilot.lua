@@ -9,4 +9,5 @@ return {
   url = "https://github.com/github/copilot-cli",
   resume = { "--resume" },
   continue = { "--continue" },
+  terminal_mode = "scrollback",
 }

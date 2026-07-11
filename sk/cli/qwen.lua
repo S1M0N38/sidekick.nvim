@@ -9,4 +9,5 @@ return {
       return str:gsub("([^%w/_%.%-])", "\\%1")
     end, "SidekickLocFile")
   end,
+  terminal_mode = "scrollback",
 }

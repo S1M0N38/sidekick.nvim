@@ -588,6 +588,24 @@ function M:keys(buf)
       end
     end
   end
+
+  -- Ctrl-click: exit terminal mode and position cursor at click
+  vim.keymap.set("t", "<C-LeftMouse>", "<C-\\><C-N><LeftMouse>", {
+    buffer = buf,
+    silent = true,
+    desc = "Sidekick: Enter normal mode at click position",
+  })
+
+  -- fullscreen: re-enter terminal mode on wheel scroll from normal/visual mode
+  if self.tool.terminal_mode == "fullscreen" then
+    for _, lhs in ipairs({ "<ScrollWheelUp>", "<ScrollWheelDown>" }) do
+      vim.keymap.set({ "n", "x" }, lhs, "<C-\\><C-N><Cmd>startinsert<CR>", {
+        buffer = buf,
+        silent = true,
+        desc = "Sidekick: Re-enter terminal mode",
+      })
+    end
+  end
 end
 
 function M:is_float()

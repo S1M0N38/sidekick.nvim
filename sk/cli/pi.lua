@@ -5,5 +5,5 @@ return {
   url = "https://github.com/badlogic/pi-mono",
   resume = { "--resume" },
   continue = { "--continue" },
-  native_scroll = false,
+  terminal_mode = "scrollback",
 }
