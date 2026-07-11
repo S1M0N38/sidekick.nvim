@@ -19,6 +19,8 @@ local MOUSE_SCROLL_UP = vim.keycode("<ScrollWheelUp>")
 local MOUSE_SCROLL_DOWN = vim.keycode("<ScrollWheelDown>")
 local MOUSE_CLICK = vim.keycode("<LeftMouse>")
 
+local SCROLL_LINES = 3
+
 -- track mouse scrolling
 vim.on_key(function(key, typed)
   key = typed or key
@@ -34,13 +36,24 @@ vim.on_key(function(key, typed)
     if key == MOUSE_CLICK and not sb:is_focused() then
       return
     end
+    -- wheel events: re-enter terminal mode, or scroll an open scrollback
+    if key ~= MOUSE_CLICK then
+      if vim.fn.mode() == "nt" and sb:is_focused() then
+        vim.cmd.startinsert()
+        return
+      end
+      if sb:is_open() then
+        sb:scroll(key == MOUSE_SCROLL_UP and "up" or "down")
+        return
+      end
+    end
     sb:update({ open = true, win_pos = key == MOUSE_CLICK and { info.screenrow, info.screencol } or nil })
   end
 end)
 
 ---@param terminal sidekick.cli.Terminal
 function M.is_enabled(terminal)
-  return terminal.parent and terminal.parent.dump ~= nil and not terminal.tool.native_scroll
+  return terminal.parent and terminal.parent.dump ~= nil and terminal.tool.terminal_mode ~= "fullscreen"
 end
 
 ---@param terminal sidekick.cli.Terminal
@@ -117,7 +130,7 @@ function M:open(win_pos)
 
   local text = terminal.parent and terminal.parent:dump() or nil
   if not text then
-    return self:scroll(win_pos)
+    return self:jump(win_pos)
   end
   terminal.normal_mode = true
 
@@ -137,7 +150,7 @@ function M:open(win_pos)
   vim.bo[self.buf].scrollback = 9999
   vim.bo[self.buf].scrollback = 9998
 
-  self:scroll(win_pos)
+  self:jump(win_pos)
 end
 
 function M:close()
@@ -217,8 +230,22 @@ function M:update(opts)
   end
 end
 
+---Scroll within an already-open scrollback buffer without leaving terminal mode.
+---@param direction "up"|"down"
+function M:scroll(direction)
+  local terminal = self.terminal()
+  if not self:is_open() then
+    return
+  end
+  local topline = vim.fn.getwininfo(terminal.win)[1].topline
+  topline = math.max(1, topline + (direction == "up" and -SCROLL_LINES or SCROLL_LINES))
+  vim.api.nvim_win_call(terminal.win, function()
+    vim.fn.winrestview({ topline = topline })
+  end)
+end
+
 ---@param win_pos? sidekick.Pos
-function M:scroll(win_pos)
+function M:jump(win_pos)
   local terminal = self.terminal()
   if not terminal then
     return
