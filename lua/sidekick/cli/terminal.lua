@@ -385,6 +385,22 @@ function M:open_win()
   vim.w[self.win].sidekick_cli = self.tool
   vim.w[self.win].sidekick_session_id = self.id
   self:wo()
+
+  -- Force SIGWINCH so the terminal job picks up the correct window size.
+  -- Without this, TUIs (zaly etc.) keep stale process.stdout.columns from
+  -- before the hide->show cycle and render off-center.
+  if self.job and self.job > 0 then
+    local w = vim.api.nvim_win_get_width(self.win)
+    local h = vim.api.nvim_win_get_height(self.win)
+    vim.api.nvim_win_set_width(self.win, w + 1)
+    vim.api.nvim_win_set_height(self.win, h + 1)
+    vim.schedule(function()
+      if self:win_valid() then
+        vim.api.nvim_win_set_width(self.win, w)
+        vim.api.nvim_win_set_height(self.win, h)
+      end
+    end)
+  end
 end
 
 function M:focus()
