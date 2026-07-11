@@ -5,4 +5,5 @@ return {
   url = "https://github.com/openai/codex",
   resume = { "resume" },
   continue = { "resume", "--last" },
+  terminal_mode = "fullscreen",
 }

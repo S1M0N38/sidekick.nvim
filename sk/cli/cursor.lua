@@ -2,5 +2,6 @@
 return {
   cmd = { "cursor-agent" },
   is_proc = "\\<cursor-agent\\>",
-  url = "https://cursor.com/cli"
+  url = "https://cursor.com/cli",
+  terminal_mode = "scrollback",
 }

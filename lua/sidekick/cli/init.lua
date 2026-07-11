@@ -20,7 +20,7 @@ local M = {}
 ---@field is_proc? (fun(self:sidekick.cli.Tool, proc:sidekick.cli.Proc):boolean)|string Regex or function to identity a running process
 ---@field mux_focus? boolean wether the tool needs to be focused in order to receive input
 ---@field format? fun(text:sidekick.Text[], str:string):string?
----@field native_scroll? boolean whether the tool handles scrolling natively
+---@field terminal_mode? "scrollback"|"fullscreen" how to handle mouse scrolling (default: "scrollback")
 
 ---@class sidekick.cli.Show
 ---@field name? string

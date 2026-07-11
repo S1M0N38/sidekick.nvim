@@ -19,4 +19,5 @@ return {
 
     return ret
   end,
+  terminal_mode = "scrollback",
 }
