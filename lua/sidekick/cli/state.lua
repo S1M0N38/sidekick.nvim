@@ -19,6 +19,7 @@ local M = {}
 ---@field cwd? boolean
 ---@field external? boolean
 ---@field installed? boolean
+---@field kind? "session" | "tool"
 ---@field name? string
 ---@field session? string
 ---@field started? boolean
@@ -39,6 +40,7 @@ function M.is(t, filter)
     and (filter.cwd == nil or t.session == nil or t.session.cwd == Session.cwd())
     and (filter.external == nil or filter.external == t.external)
     and (filter.installed == nil or filter.installed == t.installed)
+    and (filter.kind == nil or (filter.kind == "session") == (t.session ~= nil))
     and (filter.name == nil or filter.name == t.tool.name)
     and (filter.session == nil or (t.session and t.session.id == filter.session))
     and (filter.started == nil or filter.started == t.started)
@@ -65,14 +67,12 @@ function M.get_state(session)
 end
 
 ---@param filter? sidekick.cli.Filter
----@param opts? { spawn?: boolean, sessions?: boolean } spawn: include a not-running entry per tool even when sessions exist; sessions: include running sessions (default true, set false to list only tools)
 ---@return sidekick.cli.State[]
-function M.get(filter, opts)
+function M.get(filter)
   filter = filter or {}
-  opts = opts or {}
   local all = {} ---@type sidekick.cli.State[]
   local sids = {} ---@type table<string, boolean>
-  local sessions = (opts.sessions ~= false) and (filter.attached and Session.attached() or Session.sessions()) or {}
+  local sessions = (filter.kind ~= "tool") and (filter.attached and Session.attached() or Session.sessions()) or {}
 
   for _, s in pairs(sessions) do
     -- if not attached, skip if another session with higher priority
@@ -96,10 +96,10 @@ function M.get(filter, opts)
     end
   end
 
-  if not filter.attached then
+  if not filter.attached and filter.kind ~= "session" then
     for name, tool in pairs(Config.tools()) do
       local sid = Session.sid({ tool = name })
-      if not sids[sid] or opts.spawn then
+      if filter.kind == "tool" or not sids[sid] then
         all[#all + 1] = {
           tool = tool,
           installed = vim.fn.executable(tool.cmd[1]) == 1,

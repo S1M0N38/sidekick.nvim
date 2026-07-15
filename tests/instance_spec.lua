@@ -178,7 +178,7 @@ describe("tmux:init (classifying a discovered session)", function()
   end)
 end)
 
-describe("State.get spawn flag", function()
+describe("State.get kind filter", function()
   local Session = require("sidekick.cli.session")
   local State = require("sidekick.cli.state")
   local Config = require("sidekick.config")
@@ -227,26 +227,33 @@ describe("State.get spawn flag", function()
     return false
   end
 
-  it("without spawn: hides the '+new' entry when an instance is running", function()
+  it("default (no kind) hides the '+new' entry when an instance is running", function()
     local states = State.get({ name = "pi" })
     assert.is_false(has_new(states))
   end)
 
-  it("with spawn=true: includes the '+new' entry even when an instance is running", function()
-    local states = State.get({ name = "pi" }, { spawn = true })
+  it("kind=tool lists the tool even when an instance is running", function()
+    local states = State.get({ name = "pi", kind = "tool" })
     assert.is_true(has_new(states))
   end)
 
-  it("with spawn + cwd filter: still includes '+new' (spawns in the current dir)", function()
-    local states = State.get({ name = "pi", cwd = true }, { spawn = true })
-    assert.is_true(has_new(states))
-  end)
-
-  it("with sessions=false: ignores running sessions, lists only the tool", function()
-    local states = State.get({ name = "pi" }, { sessions = false })
-    assert.is_true(has_new(states))
+  it("kind=tool ignores running sessions (only tools)", function()
+    local states = State.get({ name = "pi", kind = "tool" })
     for _, st in ipairs(states) do
       assert.is_nil(st.session) -- no running session leaks through
+    end
+  end)
+
+  it("kind=tool composes with cwd", function()
+    local states = State.get({ name = "pi", cwd = true, kind = "tool" })
+    assert.is_true(has_new(states))
+  end)
+
+  it("kind=session lists only running sessions", function()
+    local states = State.get({ name = "pi", kind = "session" })
+    assert.is_false(has_new(states))
+    for _, st in ipairs(states) do
+      assert.is_not_nil(st.session)
     end
   end)
 end)

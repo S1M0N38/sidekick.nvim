@@ -4,7 +4,6 @@ local Util = require("sidekick.util")
 ---@class sidekick.cli.Select: sidekick.cli.With
 ---@field cb fun(state?:sidekick.cli.State)
 ---@field auto? boolean Automatically select if only one tool matches the filter
----@field sessions? boolean Include running sessions (default true; set false to list only tools)
 
 local M = {}
 
@@ -32,7 +31,7 @@ end
 ---@param opts sidekick.cli.Select
 function M.select(opts)
   assert(type(opts) == "table", "opts must be a table")
-  local tools = require("sidekick.cli.state").get(opts.filter, { spawn = opts.spawn, sessions = opts.sessions })
+  local tools = require("sidekick.cli.state").get(opts.filter)
 
   ---@param state? sidekick.cli.State
   local on_select = function(state)
@@ -51,9 +50,9 @@ function M.select(opts)
     return
   end
 
-  -- `sessions=false` lists only tools (the "spawn new" rows); there is no
+  -- `kind="tool"` lists only tools (the "spawn new" rows); there is no
   -- scrollback to preview, so drop the preview window and relabel the picker.
-  local tools_only = opts.sessions == false
+  local tools_only = opts.filter and opts.filter.kind == "tool"
   local title = tools_only and "Select Tool:" or "Select Session:"
 
   -- vertical layout: input + list, with a live scrollback preview for sessions
