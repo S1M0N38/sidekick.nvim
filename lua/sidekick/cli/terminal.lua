@@ -117,6 +117,18 @@ end
 
 function M:attach() end
 
+--- Delegate title get/set to the underlying mux session (e.g. tmux), if any.
+--- A terminal session wraps the real session via `.parent` (see `Session.attach`).
+function M:get_title()
+  return self.parent and self.parent.get_title and self.parent:get_title()
+end
+
+function M:set_title(title)
+  if self.parent and self.parent.set_title then
+    self.parent:set_title(title)
+  end
+end
+
 function M:is_running()
   return self.job and vim.fn.jobwait({ self.job }, 0)[1] == -1
 end

@@ -241,6 +241,14 @@ describe("State.get spawn flag", function()
     local states = State.get({ name = "pi", cwd = true }, { spawn = true })
     assert.is_true(has_new(states))
   end)
+
+  it("with sessions=false: ignores running sessions, lists only the tool", function()
+    local states = State.get({ name = "pi" }, { sessions = false })
+    assert.is_true(has_new(states))
+    for _, st in ipairs(states) do
+      assert.is_nil(st.session) -- no running session leaks through
+    end
+  end)
 end)
 
 describe("Session.attach: distinct ids per owned instance", function()
@@ -292,5 +300,29 @@ describe("Session.attach: distinct ids per owned instance", function()
     local b = Session.attach(owned(SID .. " #2", "222"))
     assert.are.same("terminal: " .. SID .. " #1", a.id)
     assert.are.same("terminal: " .. SID .. " #2", b.id)
+  end)
+end)
+
+describe("Session.new: lazy backend registration", function()
+  local Session = require("sidekick.cli.session")
+  local saved_backends, saved_did_setup
+
+  before_each(function()
+    saved_backends = Session.backends
+    saved_did_setup = Session.did_setup
+    Session.backends = {} -- pretend no backends registered yet
+    Session.did_setup = false
+  end)
+
+  after_each(function()
+    Session.backends = saved_backends
+    Session.did_setup = saved_did_setup
+  end)
+
+  it("registers backends even when Session.sessions() was never called", function()
+    -- new() must call setup() itself so the tmux/terminal backend exists
+    local state = Session.new({ tool = "pi", backend = "terminal" })
+    assert.is_not_nil(state)
+    assert.is_not_nil(Session.backends.terminal)
   end)
 end)

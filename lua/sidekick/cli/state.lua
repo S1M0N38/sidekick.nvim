@@ -65,14 +65,14 @@ function M.get_state(session)
 end
 
 ---@param filter? sidekick.cli.Filter
----@param opts? { spawn?: boolean } include a not-running entry per tool even when sessions exist
+---@param opts? { spawn?: boolean, sessions?: boolean } spawn: include a not-running entry per tool even when sessions exist; sessions: include running sessions (default true, set false to list only tools)
 ---@return sidekick.cli.State[]
 function M.get(filter, opts)
   filter = filter or {}
   opts = opts or {}
   local all = {} ---@type sidekick.cli.State[]
   local sids = {} ---@type table<string, boolean>
-  local sessions = filter.attached and Session.attached() or Session.sessions()
+  local sessions = (opts.sessions ~= false) and (filter.attached and Session.attached() or Session.sessions()) or {}
 
   for _, s in pairs(sessions) do
     -- if not attached, skip if another session with higher priority

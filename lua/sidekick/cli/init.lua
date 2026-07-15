@@ -82,6 +82,15 @@ function M.select(opts)
   require("sidekick.cli.ui.select").select(opts)
 end
 
+--- List currently attached sessions
+---@param opts? sidekick.cli.Show
+---@return sidekick.cli.State[]
+---@overload fun(name: string): sidekick.cli.State[]
+function M.attached(opts)
+  opts = filter_opts(opts)
+  return State.get(Util.merge(opts.filter, { attached = true }))
+end
+
 ---@param opts? sidekick.cli.Show
 ---@overload fun(name: string)
 function M.show(opts)

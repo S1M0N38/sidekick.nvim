@@ -238,4 +238,34 @@ function M:dump()
   return ret
 end
 
+--- Get the user-set title for this tmux session. Stored as a `@sidekick-title`
+--- session option so it lives exactly as long as the session, without touching
+--- the `<sid> #<n>` name that instance tracking parses.
+---@return string?
+function M:get_title()
+  if not self.mux_session then
+    return
+  end
+  local lines = Util.exec(
+    { "tmux", "show-options", "-v", "-t", self.mux_session, "@sidekick-title" },
+    { notify = false }
+  )
+  return lines and lines[1] and lines[1] ~= "" and lines[1] or nil
+end
+
+--- Set or clear (nil/empty) the title for this tmux session.
+---@param title? string
+function M:set_title(title)
+  if not self.mux_session then
+    return
+  end
+  local cmd = { "tmux", "set-option", "-t", self.mux_session }
+  if title and title ~= "" then
+    vim.list_extend(cmd, { "@sidekick-title", title })
+  else
+    vim.list_extend(cmd, { "-u", "@sidekick-title" }) -- unset
+  end
+  Util.exec(cmd, { notify = false })
+end
+
 return M

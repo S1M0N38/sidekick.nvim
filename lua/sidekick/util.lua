@@ -112,6 +112,28 @@ function M.width(str)
   return vim.api.nvim_strwidth(str)
 end
 
+--- Pad or truncate `s` to exactly `width` display cells. Long strings are
+--- truncated with a trailing ellipsis so fixed-width columns stay aligned.
+---@param s? string
+---@param width integer
+---@return string
+function M.cell(s, width)
+  s = s or ""
+  local w = vim.api.nvim_strwidth(s)
+  if w > width then
+    if width <= 1 then
+      return string.rep(" ", width)
+    end
+    local n = vim.fn.strchars(s)
+    while vim.api.nvim_strwidth(s) > width - 1 and n > 1 do
+      n = n - 1
+      s = vim.fn.strcharpart(s, 0, n)
+    end
+    return s .. "…"
+  end
+  return s .. string.rep(" ", width - w)
+end
+
 --- UTF-8 aware word splitting. See |keyword|
 ---@param str string
 function M.split_words(str)

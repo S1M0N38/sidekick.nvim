@@ -26,6 +26,8 @@ M._attached = {} ---@type table<string,sidekick.cli.Session>
 ---@field tool sidekick.cli.Tool
 ---@field backend string
 ---@field dump? fun(self:sidekick.cli.Session):string?
+---@field get_title? fun(self:sidekick.cli.Session):string?
+---@field set_title? fun(self:sidekick.cli.Session, title?:string)
 local B = {}
 B.__index = B
 B.priority = 0
@@ -38,6 +40,14 @@ end
 
 --- Initialize the session backend (optional hook)
 function B:init() end
+
+--- Get the user-set title for this session (optional hook)
+---@return string?
+function B:get_title() end
+
+--- Set a descriptive title for this session (optional hook)
+---@param title? string pass nil/empty to clear
+function B:set_title(title) end
 
 --- Submit the current input to the session
 function B:submit()
@@ -77,6 +87,7 @@ end
 
 ---@param state sidekick.cli.session.Opts
 function M.new(state)
+  M.setup() -- ensure backends are registered before resolving the backend below
   local tool = state.tool
   tool = type(tool) == "string" and Config.get_tool(tool) or tool --[[@as sidekick.cli.Tool]]
   local backend = state.backend or (Config.cli.mux.enabled and Config.cli.mux.backend or "terminal")
